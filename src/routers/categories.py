@@ -1,64 +1,110 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
-
+from fastapi import HTTPException, Path, APIRouter, Depends
+from typing import Annotated
 from ..database import get_db
-from ..models import Category, CategoryCreate, CategoryRead
+from sqlmodel import Session, select
+from ..models import (
+    Category,
+    CategoryCreate,
+    CategoryRead,
+)
 
-# Router sin prefijo; se agrega al incluir en ``main``
-router = APIRouter(prefix="/categories")
+categories_router = APIRouter()
 
 
-@router.post(
-    "/",
-    response_model=CategoryRead,
-    status_code=status.HTTP_201_CREATED,
+# CATEGORIES
+@categories_router.get("/", tags=["Categorías"], response_model=list[CategoryRead])
+def ver_categorias(db: Session = Depends(get_db)):
+    return db.exec(select(Category)).all()
+
+
+# CATEGORY
+@categories_router.get(
+    "/{id}",
     tags=["Categorías"],
+    response_model=CategoryRead,
+    responses={
+        404: {
+            "description": "Categoría no encontrada",
+            "content": {
+                "application/json": {"example": {"detail": "Categoría no encontrada"}}
+            },
+        }
+    },
 )
-def crear_categoria(categoria: CategoryCreate, db: Session = Depends(get_db)):
-    db_categoria = Category.from_orm(categoria)
-    db.add(db_categoria)
-    db.commit()
-    db.refresh(db_categoria)
-    return db_categoria
+def ver_categoria(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db)):
+    categoria_obtenida = db.get(Category, id)
 
-
-@router.get("/", response_model=list[CategoryRead], tags=["Categorías"])
-def listar_categorias(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    categorias = db.exec(select(Category).offset(skip).limit(limit)).all()
-    return categorias
-
-
-@router.get("/{category_id}", response_model=CategoryRead, tags=["Categorías"])
-def obtener_categoria(category_id: int, db: Session = Depends(get_db)):
-    categoria = db.get(Category, category_id)
-    if not categoria:
+    if not categoria_obtenida:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
-    return categoria
+
+    return categoria_obtenida
 
 
-@router.put("/{category_id}", response_model=CategoryRead, tags=["Categorías"])
-def actualizar_categoria(
-    category_id: int, categoria_update: CategoryCreate, db: Session = Depends(get_db)
+# AGREGAR CATEGORIA
+@categories_router.post("/", tags=["Categorías"], response_model=CategoryRead)
+def agregar_categoria(categoria: CategoryCreate, db: Session = Depends(get_db)):
+    nueva_categoria = Category.model_validate(categoria)
+
+    db.add(nueva_categoria)
+    db.commit()
+    db.refresh(nueva_categoria)
+
+    return nueva_categoria
+
+
+# REESCRIBIR CATEGORIA
+@categories_router.put(
+    "/{id}",
+    tags=["Categorías"],
+    response_model=CategoryRead,
+    responses={
+        404: {
+            "description": "Categoría no encontrada",
+            "content": {
+                "application/json": {"example": {"detail": "Categoría no encontrada"}}
+            },
+        }
+    },
+)
+def reescribir_categoria(
+    id: Annotated[int, Path(gt=0)],
+    categoria: CategoryCreate,
+    db: Session = Depends(get_db),
 ):
-    categoria = db.get(Category, category_id)
-    if not categoria:
+    categoria_obtenida = db.get(Category, id)
+
+    if not categoria_obtenida:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
-    datos = categoria_update.dict()
-    for key, value in datos.items():
-        setattr(categoria, key, value)
-    db.add(categoria)
+
+    categoria_obtenida.name = categoria.name
+
     db.commit()
-    db.refresh(categoria)
-    return categoria
+    db.refresh(categoria_obtenida)
+
+    return categoria_obtenida
 
 
-@router.delete(
-    "/{category_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Categorías"]
+# BORRAR CATEGORIA
+@categories_router.delete(
+    "/{id}",
+    tags=["Categorías"],
+    response_model=list[CategoryRead],
+    responses={
+        404: {
+            "description": "Categoría no encontrada",
+            "content": {
+                "application/json": {"example": {"detail": "Categoría no encontrada"}}
+            },
+        }
+    },
 )
-def borrar_categoria(category_id: int, db: Session = Depends(get_db)):
-    categoria = db.get(Category, category_id)
-    if not categoria:
+def borrar_categoria(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db)):
+    categoria_obtenida = db.get(Category, id)
+
+    if not categoria_obtenida:
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
-    db.delete(categoria)
+
+    db.delete(categoria_obtenida)
     db.commit()
-    return None
+
+    return db.exec(select(Category)).all()

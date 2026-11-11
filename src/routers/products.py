@@ -1,64 +1,114 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
-
+from fastapi import HTTPException, Path, APIRouter, Depends
+from typing import Annotated
 from ..database import get_db
-from ..models import Product, ProductCreate, ProductRead, CategoryRead, UserRead
+from sqlmodel import Session, select
+from ..models import (
+    Product,
+    ProductCreate,
+    ProductRead,
+)
 
-# Router sin prefijo; se agrega al incluir en ``main``
-router = APIRouter()
+products_router = APIRouter()
 
 
-@router.post(
-    "/",
-    response_model=ProductRead,
-    status_code=status.HTTP_201_CREATED,
+# PRODUCTS
+@products_router.get("/", tags=["Productos"], response_model=list[ProductRead])
+def ver_productos(db: Session = Depends(get_db)):
+    return db.exec(select(Product)).all()
+
+
+# PRODUCT
+@products_router.get(
+    "/{id}",
     tags=["Productos"],
+    response_model=ProductRead,
+    responses={
+        404: {
+            "description": "Producto no encontrado",
+            "content": {
+                "application/json": {"example": {"detail": "Producto no encontrado"}}
+            },
+        }
+    },
 )
-def crear_producto(producto: ProductCreate, db: Session = Depends(get_db)):
-    db_producto = Product.from_orm(producto)
-    db.add(db_producto)
-    db.commit()
-    db.refresh(db_producto)
-    return db_producto
+def ver_producto(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db)):
+    producto_obtenido = db.get(Product, id)
 
-
-@router.get("/", response_model=list[ProductRead], tags=["Productos"])
-def listar_productos(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    productos = db.exec(select(Product).offset(skip).limit(limit)).all()
-    return productos
-
-
-@router.get("/{product_id}", response_model=ProductRead, tags=["Productos"])
-def obtener_producto(product_id: int, db: Session = Depends(get_db)):
-    producto = db.get(Product, product_id)
-    if not producto:
+    if not producto_obtenido:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    return producto
+
+    return producto_obtenido
 
 
-@router.put("/{product_id}", response_model=ProductRead, tags=["Productos"])
-def actualizar_producto(
-    product_id: int, producto_update: ProductCreate, db: Session = Depends(get_db)
+# AGREGAR PRODUCTO
+@products_router.post("/", tags=["Productos"], response_model=ProductRead)
+def agregar_producto(producto: ProductCreate, db: Session = Depends(get_db)):
+    nuevo_producto = Product.model_validate(producto)
+
+    db.add(nuevo_producto)
+    db.commit()
+    db.refresh(nuevo_producto)
+
+    return nuevo_producto
+
+
+# REESCRIBIR PRODUCTO
+@products_router.put(
+    "/{id}",
+    tags=["Productos"],
+    response_model=ProductRead,
+    responses={
+        404: {
+            "description": "Producto no encontrado",
+            "content": {
+                "application/json": {"example": {"detail": "Producto no encontrado"}}
+            },
+        }
+    },
+)
+def reescribir_producto(
+    id: Annotated[int, Path(gt=0)],
+    producto: ProductCreate,
+    db: Session = Depends(get_db),
 ):
-    producto = db.get(Product, product_id)
-    if not producto:
+    producto_obtenido = db.get(Product, id)
+
+    if not producto_obtenido:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    datos = producto_update.dict()
-    for key, value in datos.items():
-        setattr(producto, key, value)
-    db.add(producto)
+
+    producto_obtenido.name = producto.name
+    producto_obtenido.description = producto.description
+    producto_obtenido.price = producto.price
+    producto_obtenido.category_id = producto.category_id
+    producto_obtenido.last_modified_by_user_id = producto.last_modified_by_user_id
+
     db.commit()
-    db.refresh(producto)
-    return producto
+    db.refresh(producto_obtenido)
+
+    return producto_obtenido
 
 
-@router.delete(
-    "/{product_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Productos"]
+# BORRAR PRODUCTO
+@products_router.delete(
+    "/{id}",
+    tags=["Productos"],
+    response_model=list[ProductRead],
+    responses={
+        404: {
+            "description": "Producto no encontrado",
+            "content": {
+                "application/json": {"example": {"detail": "Producto no encontrado"}}
+            },
+        }
+    },
 )
-def borrar_producto(product_id: int, db: Session = Depends(get_db)):
-    producto = db.get(Product, product_id)
-    if not producto:
+def borrar_producto(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db)):
+    producto_obtenido = db.get(Product, id)
+
+    if not producto_obtenido:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
-    db.delete(producto)
+
+    db.delete(producto_obtenido)
     db.commit()
-    return None
+
+    return db.exec(select(Product)).all()

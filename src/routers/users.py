@@ -1,60 +1,114 @@
-from fastapi import APIRouter, Depends, HTTPException, status
-from sqlmodel import Session, select
-
+from fastapi import HTTPException, Path, APIRouter, Depends
+from typing import Annotated
 from ..database import get_db
-from ..models import User, UserCreate, UserRead
-
-router = APIRouter(prefix="/users")
-
-
-@router.post(
-    "/", response_model=UserRead, status_code=status.HTTP_201_CREATED, tags=["Usuarios"]
+from sqlmodel import Session, select
+from ..models import (
+    User,
+    UserCreate,
+    UserRead,
 )
-def crear_usuario(usuario: UserCreate, db: Session = Depends(get_db)):
-    db_user = User.from_orm(usuario)
-    db.add(db_user)
-    db.commit()
-    db.refresh(db_user)
-    return db_user
+
+users_router = APIRouter()
 
 
-@router.get("/", response_model=list[UserRead], tags=["Usuarios"])
-def listar_usuarios(skip: int = 0, limit: int = 100, db: Session = Depends(get_db)):
-    usuarios = db.exec(select(User).offset(skip).limit(limit)).all()
-    return usuarios
-    usuarios = db.exec(select(User).offset(skip).limit(limit)).all()
-    return usuarios
+# USERS
+@users_router.get("/", tags=["Usuarios"], response_model=list[UserRead])
+def ver_usuarios(db: Session = Depends(get_db)):
+    return db.exec(select(User)).all()
 
 
-@router.get("/{user_id}", response_model=UserRead, tags=["Usuarios"])
-def obtener_usuario(user_id: int, db: Session = Depends(get_db)):
-    usuario = db.get(User, user_id)
-    if not usuario:
+# USER
+@users_router.get(
+    "/{id}",
+    tags=["Usuarios"],
+    response_model=UserRead,
+    responses={
+        404: {
+            "description": "Usuario no encontrado",
+            "content": {
+                "application/json": {"example": {"detail": "Usuario no encontrado"}}
+            },
+        }
+    },
+)
+def ver_usuario(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db)):
+    usuario_obtenido = db.get(User, id)
+
+    if not usuario_obtenido:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    return usuario
+
+    return usuario_obtenido
 
 
-@router.put("/{user_id}", response_model=UserRead, tags=["Usuarios"])
-def actualizar_usuario(
-    user_id: int, usuario_update: UserCreate, db: Session = Depends(get_db)
+# AGREGAR USER
+@users_router.post("/", tags=["Usuarios"], response_model=UserRead)
+def agregar_usuario(usuario: UserCreate, db: Session = Depends(get_db)):
+    nuevo_usuario = User(
+        username=usuario.username,
+        hashed_password=usuario.password,
+        is_owner=usuario.is_owner,
+    )
+
+    db.add(nuevo_usuario)
+    db.commit()
+    db.refresh(nuevo_usuario)
+
+    return nuevo_usuario
+
+
+# REESCRIBIR USER
+@users_router.put(
+    "/{id}",
+    tags=["Usuarios"],
+    response_model=UserRead,
+    responses={
+        404: {
+            "description": "Usuario no encontrado",
+            "content": {
+                "application/json": {"example": {"detail": "Usuario no encontrado"}}
+            },
+        }
+    },
+)
+def reescribir_usuario(
+    id: Annotated[int, Path(gt=0)], usuario: UserCreate, db: Session = Depends(get_db)
 ):
-    usuario = db.get(User, user_id)
-    if not usuario:
+    usuario_obtenido = db.get(User, id)
+
+    if not usuario_obtenido:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    datos = usuario_update.dict()
-    for key, value in datos.items():
-        setattr(usuario, key, value)
-    db.add(usuario)
+
+    usuario_obtenido.username = usuario.username
+    usuario_obtenido.hashed_password = usuario.password
+    usuario_obtenido.is_owner = usuario.is_owner
+
     db.commit()
-    db.refresh(usuario)
-    return usuario
+    db.refresh(usuario_obtenido)
+
+    return usuario_obtenido
 
 
-@router.delete("/{user_id}", status_code=status.HTTP_204_NO_CONTENT, tags=["Usuarios"])
-def borrar_usuario(user_id: int, db: Session = Depends(get_db)):
-    usuario = db.get(User, user_id)
-    if not usuario:
+# BORRAR USER
+@users_router.delete(
+    "/{id}",
+    tags=["Usuarios"],
+    response_model=list[UserRead],
+    responses={
+        404: {
+            "description": "Usuario no encontrado",
+            "content": {
+                "application/json": {"example": {"detail": "Usuario no encontrado"}}
+            },
+        }
+    },
+)
+def borrar_usuario(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db)):
+    usuario_obtenido = db.get(User, id)
+
+    if not usuario_obtenido:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-    db.delete(usuario)
+
+    db.delete(usuario_obtenido)
     db.commit()
-    return None
+
+    return db.exec(select(User)).all()
