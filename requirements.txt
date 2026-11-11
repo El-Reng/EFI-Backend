@@ -1,0 +1,6 @@
+fastapi[all]
+uvicorn[standard]
+sqlmodel
+alembic
+python-jose[cryptography]
+passlib[bcrypt]

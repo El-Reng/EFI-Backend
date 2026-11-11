@@ -1,0 +1,6 @@
+# Carpetas
+__pycache__
+.venv
+
+# Base de datos local
+*.db
