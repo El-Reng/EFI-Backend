@@ -1,5 +1,7 @@
 from fastapi import HTTPException, Path, APIRouter, Depends
 from typing import Annotated
+from fastapi_pagination import Page
+from fastapi_pagination.ext.sqlalchemy import paginate
 from ..database import get_db
 from sqlmodel import Session, select
 from ..models import (
@@ -12,9 +14,9 @@ products_router = APIRouter()
 
 
 # PRODUCTS
-@products_router.get("/", tags=["Productos"], response_model=list[ProductRead])
+@products_router.get("/", tags=["Productos"], response_model=Page[ProductRead])
 def ver_productos(db: Session = Depends(get_db)):
-    return db.exec(select(Product)).all()
+    return paginate(db, select(Product))
 
 
 # PRODUCT

@@ -1,5 +1,7 @@
 from fastapi import HTTPException, Path, APIRouter, Depends
 from typing import Annotated
+from fastapi_pagination import Page
+from fastapi_pagination.ext.sqlalchemy import paginate
 from ..database import get_db
 from sqlmodel import Session, select
 from ..models import (
@@ -12,9 +14,9 @@ users_router = APIRouter()
 
 
 # USERS
-@users_router.get("/", tags=["Usuarios"], response_model=list[UserRead])
+@users_router.get("/", tags=["Usuarios"], response_model=Page[UserRead])
 def ver_usuarios(db: Session = Depends(get_db)):
-    return db.exec(select(User)).all()
+    return paginate(db, select(User))
 
 
 # USER
