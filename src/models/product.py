@@ -1,5 +1,7 @@
+
 from sqlmodel import Field, Relationship, SQLModel
 from typing import TYPE_CHECKING
+from datetime import datetime
 
 from .category import CategoryRead
 from .user import UserRead
@@ -19,9 +21,10 @@ class Product(ProductBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     category_id: int = Field(foreign_key="category.id")
     last_modified_by_user_id: int = Field(foreign_key="user.id")
+    last_modified_at: datetime = Field(default_factory=datetime.utcnow)
 
     category: "Category" = Relationship(back_populates="products")
-    created_by: "User" = Relationship(back_populates="created_products")
+    last_modified_by: "User" = Relationship(back_populates="modified_products")
 
 
 class ProductCreate(ProductBase):
@@ -32,4 +35,5 @@ class ProductCreate(ProductBase):
 class ProductRead(ProductBase):
     id: int
     category: CategoryRead
-    created_by: UserRead
+    last_modified_by: UserRead
+    last_modified_at: datetime

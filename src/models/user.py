@@ -14,7 +14,7 @@ class UserBase(SQLModel):
 class User(UserBase, table=True):
     id: int | None = Field(default=None, primary_key=True)
     hashed_password: str
-    created_products: list["Product"] = Relationship(back_populates="created_by")
+    modified_products: list["Product"] = Relationship(back_populates="last_modified_by")
 
 
 class UserCreate(UserBase):

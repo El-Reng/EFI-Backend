@@ -1,5 +1,6 @@
 from fastapi import HTTPException, Path, APIRouter, Depends
 from typing import Annotated
+from datetime import datetime, timezone
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from ..database import get_db
@@ -46,6 +47,7 @@ def ver_producto(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db)):
 @products_router.post("/", tags=["Productos"], response_model=ProductRead)
 def agregar_producto(producto: ProductCreate, db: Session = Depends(get_db)):
     nuevo_producto = Product.model_validate(producto)
+    nuevo_producto.last_modified_at = datetime.now(timezone.utc)
 
     db.add(nuevo_producto)
     db.commit()
@@ -83,6 +85,7 @@ def reescribir_producto(
     producto_obtenido.price = producto.price
     producto_obtenido.category_id = producto.category_id
     producto_obtenido.last_modified_by_user_id = producto.last_modified_by_user_id
+    producto_obtenido.last_modified_at = datetime.now(timezone.utc)
 
     db.commit()
     db.refresh(producto_obtenido)
