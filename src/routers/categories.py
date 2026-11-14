@@ -7,23 +7,23 @@ from sqlmodel import Session, select
 from ..models import (
     Category,
     CategoryCreate,
-    CategoryRead,
+    CategoryPublic,
 )
 
 categories_router = APIRouter()
 
 
-# CATEGORIES
-@categories_router.get("/", tags=["Categorías"], response_model=Page[CategoryRead])
+# CATEGORIAS
+@categories_router.get("/", tags=["Categorías"], response_model=Page[CategoryPublic])
 def ver_categorias(db: Session = Depends(get_db)):
     return paginate(db, select(Category))
 
 
-# CATEGORY
+# CATEGORIA
 @categories_router.get(
     "/{id}",
     tags=["Categorías"],
-    response_model=CategoryRead,
+    response_model=CategoryPublic,
     responses={
         404: {
             "description": "Categoría no encontrada",
@@ -43,7 +43,7 @@ def ver_categoria(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db))
 
 
 # AGREGAR CATEGORIA
-@categories_router.post("/", tags=["Categorías"], response_model=CategoryRead)
+@categories_router.post("/", tags=["Categorías"], response_model=CategoryPublic)
 def agregar_categoria(categoria: CategoryCreate, db: Session = Depends(get_db)):
     nueva_categoria = Category.model_validate(categoria)
 
@@ -58,7 +58,7 @@ def agregar_categoria(categoria: CategoryCreate, db: Session = Depends(get_db)):
 @categories_router.put(
     "/{id}",
     tags=["Categorías"],
-    response_model=CategoryRead,
+    response_model=CategoryPublic,
     responses={
         404: {
             "description": "Categoría no encontrada",
@@ -90,7 +90,7 @@ def reescribir_categoria(
 @categories_router.delete(
     "/{id}",
     tags=["Categorías"],
-    response_model=list[CategoryRead],
+    response_model=list[CategoryPublic],
     responses={
         404: {
             "description": "Categoría no encontrada",

@@ -2,19 +2,27 @@ from fastapi import HTTPException, Path, APIRouter, Depends
 from typing import Annotated
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
+import bcrypt
 from ..database import get_db
 from sqlmodel import Session, select
 from ..models import (
     User,
     UserCreate,
-    UserRead,
+    UserPublic,
 )
 
 users_router = APIRouter()
 
 
+def hash_password(password: str) -> str:
+    password_bytes = password.encode("utf-8")
+    hashed_password = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+
+    return hashed_password.decode("utf-8")
+
+
 # USERS
-@users_router.get("/", tags=["Usuarios"], response_model=Page[UserRead])
+@users_router.get("/", tags=["Usuarios"], response_model=Page[UserPublic])
 def ver_usuarios(db: Session = Depends(get_db)):
     return paginate(db, select(User))
 
@@ -23,7 +31,7 @@ def ver_usuarios(db: Session = Depends(get_db)):
 @users_router.get(
     "/{id}",
     tags=["Usuarios"],
-    response_model=UserRead,
+    response_model=UserPublic,
     responses={
         404: {
             "description": "Usuario no encontrado",
@@ -43,11 +51,11 @@ def ver_usuario(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db)):
 
 
 # AGREGAR USER
-@users_router.post("/", tags=["Usuarios"], response_model=UserRead)
+@users_router.post("/", tags=["Usuarios"], response_model=UserPublic)
 def agregar_usuario(usuario: UserCreate, db: Session = Depends(get_db)):
     nuevo_usuario = User(
         username=usuario.username,
-        hashed_password=usuario.password,
+        hashed_password=hash_password(usuario.password),
         is_owner=usuario.is_owner,
     )
 
@@ -62,7 +70,7 @@ def agregar_usuario(usuario: UserCreate, db: Session = Depends(get_db)):
 @users_router.put(
     "/{id}",
     tags=["Usuarios"],
-    response_model=UserRead,
+    response_model=UserPublic,
     responses={
         404: {
             "description": "Usuario no encontrado",
@@ -81,7 +89,7 @@ def reescribir_usuario(
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
     usuario_obtenido.username = usuario.username
-    usuario_obtenido.hashed_password = usuario.password
+    usuario_obtenido.hashed_password = hash_password(usuario.password)
     usuario_obtenido.is_owner = usuario.is_owner
 
     db.commit()
@@ -94,7 +102,7 @@ def reescribir_usuario(
 @users_router.delete(
     "/{id}",
     tags=["Usuarios"],
-    response_model=list[UserRead],
+    response_model=list[UserPublic],
     responses={
         404: {
             "description": "Usuario no encontrado",

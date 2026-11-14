@@ -6,8 +6,11 @@ from .routers import users, categories, products
 
 app = FastAPI()
 
-app.title = "API - EFI Backend"
-app.summary = "Por Acuña, Rojo y Roldan"
+app = FastAPI(
+    title="API - EFI Backend",
+    description="API REST para la gestión de usuarios, categorías y productos de una panadería.",
+    summary="Por Acuña, Rojo y Roldan",
+)
 
 origins = [
     "http://localhost:5173",
