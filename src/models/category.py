@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 
 class CategoryBase(SQLModel):
-    name: str = Field(index=True, unique=True)
+    name: str = Field(min_length=1, index=True, unique=True)
 
 
 class Category(CategoryBase, table=True):

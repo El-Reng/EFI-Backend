@@ -6,7 +6,7 @@ if TYPE_CHECKING:
 
 
 class UserBase(SQLModel):
-    username: str = Field(index=True, unique=True)
+    username: str = Field(min_length=1, index=True, unique=True)
     is_owner: bool = False
 
 

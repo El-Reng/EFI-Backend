@@ -16,6 +16,13 @@ users_router = APIRouter()
 
 def hash_password(password: str) -> str:
     password_bytes = password.encode("utf-8")
+
+    if len(password_bytes) > 72:
+        raise HTTPException(
+            status_code=422,
+            detail="La contraseña no puede superar los 72 bytes",
+        )
+
     hashed_password = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
 
     return hashed_password.decode("utf-8")
