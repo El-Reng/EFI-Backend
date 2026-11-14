@@ -11,9 +11,9 @@ if TYPE_CHECKING:
 
 
 class ProductBase(SQLModel):
-    name: str
+    name: str = Field(min_length=1)
     description: str | None = None
-    price: float
+    price: float = Field(gt=0)
 
 
 class Product(ProductBase, table=True):
