@@ -8,23 +8,23 @@ from sqlmodel import Session, select
 from ..models import (
     Product,
     ProductCreate,
-    ProductRead,
+    ProductPublicNested,
 )
 
 products_router = APIRouter()
 
 
-# PRODUCTS
-@products_router.get("/", tags=["Productos"], response_model=Page[ProductRead])
+# PRODUCTOS
+@products_router.get("/", tags=["Productos"], response_model=Page[ProductPublicNested])
 def ver_productos(db: Session = Depends(get_db)):
     return paginate(db, select(Product))
 
 
-# PRODUCT
+# PRODUCTO
 @products_router.get(
     "/{id}",
     tags=["Productos"],
-    response_model=ProductRead,
+    response_model=ProductPublicNested,
     responses={
         404: {
             "description": "Producto no encontrado",
@@ -44,7 +44,7 @@ def ver_producto(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db)):
 
 
 # AGREGAR PRODUCTO
-@products_router.post("/", tags=["Productos"], response_model=ProductRead)
+@products_router.post("/", tags=["Productos"], response_model=ProductPublicNested)
 def agregar_producto(producto: ProductCreate, db: Session = Depends(get_db)):
     nuevo_producto = Product.model_validate(producto)
     nuevo_producto.last_modified_at = datetime.now(timezone.utc)
@@ -60,7 +60,7 @@ def agregar_producto(producto: ProductCreate, db: Session = Depends(get_db)):
 @products_router.put(
     "/{id}",
     tags=["Productos"],
-    response_model=ProductRead,
+    response_model=ProductPublicNested,
     responses={
         404: {
             "description": "Producto no encontrado",
@@ -97,7 +97,7 @@ def reescribir_producto(
 @products_router.delete(
     "/{id}",
     tags=["Productos"],
-    response_model=list[ProductRead],
+    response_model=list[ProductPublicNested],
     responses={
         404: {
             "description": "Producto no encontrado",

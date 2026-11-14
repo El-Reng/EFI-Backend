@@ -1,5 +1,4 @@
 from sqlmodel import Field, Relationship, SQLModel
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -19,5 +18,5 @@ class CategoryCreate(CategoryBase):
     pass
 
 
-class CategoryRead(CategoryBase):
+class CategoryPublic(CategoryBase):
     id: int

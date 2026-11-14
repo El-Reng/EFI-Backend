@@ -1,5 +1,4 @@
 from sqlmodel import Field, Relationship, SQLModel
-
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -21,5 +20,5 @@ class UserCreate(UserBase):
     password: str
 
 
-class UserRead(UserBase):
+class UserPublic(UserBase):
     id: int
