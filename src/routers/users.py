@@ -28,6 +28,18 @@ def hash_password(password: str) -> str:
     return hashed_password.decode("utf-8")
 
 
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    password_bytes = plain_password.encode("utf-8")
+
+    if len(password_bytes) > 72:
+        return False
+
+    return bcrypt.checkpw(
+        password_bytes,
+        hashed_password.encode("utf-8"),
+    )
+
+
 # USERS
 @users_router.get("/", tags=["Usuarios"], response_model=Page[UserPublic])
 def ver_usuarios(db: Session = Depends(get_db)):
@@ -63,7 +75,6 @@ def agregar_usuario(usuario: UserCreate, db: Session = Depends(get_db)):
     nuevo_usuario = User(
         username=usuario.username,
         hashed_password=hash_password(usuario.password),
-        is_owner=usuario.is_owner,
     )
 
     db.add(nuevo_usuario)
@@ -97,7 +108,6 @@ def reescribir_usuario(
 
     usuario_obtenido.username = usuario.username
     usuario_obtenido.hashed_password = hash_password(usuario.password)
-    usuario_obtenido.is_owner = usuario.is_owner
 
     db.commit()
     db.refresh(usuario_obtenido)

@@ -1,3 +1,4 @@
+
 from sqlmodel import Field, Relationship, SQLModel
 from typing import TYPE_CHECKING
 
@@ -16,7 +17,8 @@ class User(UserBase, table=True):
     modified_products: list["Product"] = Relationship(back_populates="last_modified_by")
 
 
-class UserCreate(UserBase):
+class UserCreate(SQLModel):
+    username: str = Field(min_length=1)
     password: str
 
 
