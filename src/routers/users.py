@@ -2,7 +2,8 @@ from fastapi import HTTPException, Path, APIRouter, Depends
 from typing import Annotated
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-import bcrypt
+from ..core.dependencies import get_current_owner
+from ..core.security import hash_password
 from ..database import get_db
 from sqlmodel import Session, select
 from ..models import (
@@ -11,21 +12,7 @@ from ..models import (
     UserPublic,
 )
 
-users_router = APIRouter()
-
-
-def hash_password(password: str) -> str:
-    password_bytes = password.encode("utf-8")
-
-    if len(password_bytes) > 72:
-        raise HTTPException(
-            status_code=422,
-            detail="La contraseña no puede superar los 72 bytes",
-        )
-
-    hashed_password = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
-
-    return hashed_password.decode("utf-8")
+users_router = APIRouter(dependencies=[Depends(get_current_owner)])
 
 
 # USERS
@@ -63,7 +50,6 @@ def agregar_usuario(usuario: UserCreate, db: Session = Depends(get_db)):
     nuevo_usuario = User(
         username=usuario.username,
         hashed_password=hash_password(usuario.password),
-        is_owner=usuario.is_owner,
     )
 
     db.add(nuevo_usuario)
@@ -97,7 +83,6 @@ def reescribir_usuario(
 
     usuario_obtenido.username = usuario.username
     usuario_obtenido.hashed_password = hash_password(usuario.password)
-    usuario_obtenido.is_owner = usuario.is_owner
 
     db.commit()
     db.refresh(usuario_obtenido)

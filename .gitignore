@@ -2,5 +2,6 @@
 __pycache__
 .venv
 
-# Base de datos local
+# Archivos
 *.db
+.env
