@@ -2,7 +2,7 @@ from fastapi import HTTPException, Path, APIRouter, Depends
 from typing import Annotated
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-import bcrypt
+from ..core.security import hash_password
 from ..database import get_db
 from sqlmodel import Session, select
 from ..models import (
@@ -12,32 +12,6 @@ from ..models import (
 )
 
 users_router = APIRouter()
-
-
-def hash_password(password: str) -> str:
-    password_bytes = password.encode("utf-8")
-
-    if len(password_bytes) > 72:
-        raise HTTPException(
-            status_code=422,
-            detail="La contraseña no puede superar los 72 bytes",
-        )
-
-    hashed_password = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
-
-    return hashed_password.decode("utf-8")
-
-
-def verify_password(plain_password: str, hashed_password: str) -> bool:
-    password_bytes = plain_password.encode("utf-8")
-
-    if len(password_bytes) > 72:
-        return False
-
-    return bcrypt.checkpw(
-        password_bytes,
-        hashed_password.encode("utf-8"),
-    )
 
 
 # USERS
