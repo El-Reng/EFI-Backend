@@ -2,9 +2,11 @@ from fastapi import HTTPException, Path, APIRouter, Depends
 from typing import Annotated
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
+from ..core.dependencies import get_current_owner
 from ..database import get_db
 from sqlmodel import Session, select
 from ..models import (
+    User,
     Category,
     CategoryCreate,
     CategoryPublic,
@@ -44,7 +46,11 @@ def ver_categoria(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db))
 
 # AGREGAR CATEGORIA
 @categories_router.post("/", tags=["Categorías"], response_model=CategoryPublic)
-def agregar_categoria(categoria: CategoryCreate, db: Session = Depends(get_db)):
+def agregar_categoria(
+    categoria: CategoryCreate,
+    db: Session = Depends(get_db),
+    usuario_actual: User = Depends(get_current_owner),
+):
     nueva_categoria = Category.model_validate(categoria)
 
     db.add(nueva_categoria)
@@ -72,6 +78,7 @@ def reescribir_categoria(
     id: Annotated[int, Path(gt=0)],
     categoria: CategoryCreate,
     db: Session = Depends(get_db),
+    usuario_actual: User = Depends(get_current_owner),
 ):
     categoria_obtenida = db.get(Category, id)
 
@@ -100,7 +107,11 @@ def reescribir_categoria(
         }
     },
 )
-def borrar_categoria(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db)):
+def borrar_categoria(
+    id: Annotated[int, Path(gt=0)],
+    db: Session = Depends(get_db),
+    usuario_actual: User = Depends(get_current_owner),
+):
     categoria_obtenida = db.get(Category, id)
 
     if not categoria_obtenida:

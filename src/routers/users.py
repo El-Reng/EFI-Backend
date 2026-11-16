@@ -2,6 +2,7 @@ from fastapi import HTTPException, Path, APIRouter, Depends
 from typing import Annotated
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
+from ..core.dependencies import get_current_owner
 from ..core.security import hash_password
 from ..database import get_db
 from sqlmodel import Session, select
@@ -11,7 +12,7 @@ from ..models import (
     UserPublic,
 )
 
-users_router = APIRouter()
+users_router = APIRouter(dependencies=[Depends(get_current_owner)])
 
 
 # USERS
