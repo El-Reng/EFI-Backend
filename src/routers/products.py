@@ -3,7 +3,11 @@ from typing import Annotated
 from datetime import datetime, timezone
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-from ..core.dependencies import get_current_user, get_current_owner
+from ..core.dependencies import (
+    get_current_user,
+    get_current_owner,
+    get_optional_user,
+)
 from ..database import get_db
 from sqlmodel import Session, select
 from ..models import (
@@ -11,15 +15,31 @@ from ..models import (
     Product,
     ProductCreate,
     ProductPublicNested,
+    ProductAdminPublicNested,
 )
 
 products_router = APIRouter()
 
 
-# PRODUCTOS
-@products_router.get("/", tags=["Productos"], response_model=Page[ProductPublicNested])
-def ver_productos(db: Session = Depends(get_db)):
-    return paginate(db, select(Product))
+@products_router.get(
+    "/",
+    tags=["Productos"],
+    response_model=Page[ProductAdminPublicNested | ProductPublicNested],
+)
+def ver_productos(
+    db: Session = Depends(get_db),
+    usuario_actual: Annotated[User | None, Depends(get_optional_user)] = None,
+):
+    pagina = paginate(db, select(Product))
+
+    if usuario_actual is None:
+        productos_publicos = [
+            ProductPublicNested.model_validate(producto) for producto in pagina.items
+        ]
+
+        pagina = pagina.model_copy(update={"items": productos_publicos})
+
+    return pagina
 
 
 # PRODUCTO
@@ -46,13 +66,18 @@ def ver_producto(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db)):
 
 
 # AGREGAR PRODUCTO
-@products_router.post("/", tags=["Productos"], response_model=ProductPublicNested)
+@products_router.post("/", tags=["Productos"], response_model=ProductAdminPublicNested)
 def agregar_producto(
     producto: ProductCreate,
     db: Session = Depends(get_db),
     usuario_actual: User = Depends(get_current_owner),
 ):
     nuevo_producto = Product.model_validate(producto)
+
+    if usuario_actual.id is None:
+        raise HTTPException(status_code=500, detail="Error al identificar al usuario")
+
+    nuevo_producto.last_modified_by_user_id = usuario_actual.id
     nuevo_producto.last_modified_at = datetime.now(timezone.utc)
 
     db.add(nuevo_producto)
@@ -66,7 +91,7 @@ def agregar_producto(
 @products_router.put(
     "/{id}",
     tags=["Productos"],
-    response_model=ProductPublicNested,
+    response_model=ProductAdminPublicNested,
     responses={
         404: {
             "description": "Producto no encontrado",
@@ -106,7 +131,7 @@ def reescribir_producto(
 @products_router.delete(
     "/{id}",
     tags=["Productos"],
-    response_model=list[ProductPublicNested],
+    response_model=list[ProductAdminPublicNested],
     responses={
         404: {
             "description": "Producto no encontrado",
