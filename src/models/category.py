@@ -7,6 +7,7 @@ if TYPE_CHECKING:
 
 class CategoryBase(SQLModel):
     name: str = Field(min_length=1, index=True, unique=True)
+    image_url: str | None = None
 
 
 class Category(CategoryBase, table=True):

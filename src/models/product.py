@@ -1,3 +1,4 @@
+
 from sqlmodel import Field, Relationship, SQLModel
 from typing import TYPE_CHECKING
 from datetime import datetime, timezone
@@ -14,6 +15,7 @@ class ProductBase(SQLModel):
     name: str = Field(min_length=1)
     description: str | None = None
     price: float = Field(gt=0)
+    image_url: str | None = None
 
 
 class Product(ProductBase, table=True):

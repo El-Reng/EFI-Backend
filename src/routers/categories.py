@@ -86,6 +86,7 @@ def reescribir_categoria(
         raise HTTPException(status_code=404, detail="Categoría no encontrada")
 
     categoria_obtenida.name = categoria.name
+    categoria_obtenida.image_url = categoria.image_url
 
     db.commit()
     db.refresh(categoria_obtenida)
