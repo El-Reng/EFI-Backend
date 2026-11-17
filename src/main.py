@@ -4,8 +4,6 @@ from fastapi_pagination import add_pagination
 from . import models
 from .routers import users, categories, products, auth
 
-app = FastAPI()
-
 app = FastAPI(
     title="API - EFI Backend",
     description="API REST para la gestión de usuarios, categorías y productos de una panadería.",
