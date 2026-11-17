@@ -78,13 +78,16 @@ def agregar_producto(
     db: Session = Depends(get_db),
     usuario_actual: User = Depends(get_current_user),
 ):
-    nuevo_producto = Product.model_validate(producto)
-
     if usuario_actual.id is None:
         raise HTTPException(status_code=500, detail="Error al identificar al usuario")
 
-    nuevo_producto.last_modified_by_user_id = usuario_actual.id
-    nuevo_producto.last_modified_at = datetime.now(timezone.utc)
+    nuevo_producto = Product.model_validate(
+        producto,
+        update={
+            "last_modified_by_user_id": usuario_actual.id,
+            "last_modified_at": datetime.now(timezone.utc),
+        },
+    )
 
     db.add(nuevo_producto)
     db.commit()
