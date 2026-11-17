@@ -2,7 +2,7 @@ from fastapi import HTTPException, Path, APIRouter, Depends
 from typing import Annotated
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-from ..core.dependencies import get_current_owner
+from ..core.dependencies import get_current_user
 from ..database import get_db
 from sqlmodel import Session, select
 from ..models import (
@@ -49,7 +49,7 @@ def ver_categoria(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db))
 def agregar_categoria(
     categoria: CategoryCreate,
     db: Session = Depends(get_db),
-    usuario_actual: User = Depends(get_current_owner),
+    usuario_actual: User = Depends(get_current_user),
 ):
     nueva_categoria = Category.model_validate(categoria)
 
@@ -78,7 +78,7 @@ def reescribir_categoria(
     id: Annotated[int, Path(gt=0)],
     categoria: CategoryCreate,
     db: Session = Depends(get_db),
-    usuario_actual: User = Depends(get_current_owner),
+    usuario_actual: User = Depends(get_current_user),
 ):
     categoria_obtenida = db.get(Category, id)
 
@@ -110,7 +110,7 @@ def reescribir_categoria(
 def borrar_categoria(
     id: Annotated[int, Path(gt=0)],
     db: Session = Depends(get_db),
-    usuario_actual: User = Depends(get_current_owner),
+    usuario_actual: User = Depends(get_current_user),
 ):
     categoria_obtenida = db.get(Category, id)
 

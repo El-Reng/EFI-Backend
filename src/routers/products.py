@@ -5,7 +5,6 @@ from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
 from ..core.dependencies import (
     get_current_user,
-    get_current_owner,
     get_optional_user,
 )
 from ..database import get_db
@@ -46,7 +45,7 @@ def ver_productos(
 @products_router.get(
     "/{id}",
     tags=["Productos"],
-    response_model=ProductPublicNested,
+    response_model=ProductAdminPublicNested | ProductPublicNested,
     responses={
         404: {
             "description": "Producto no encontrado",
@@ -56,11 +55,18 @@ def ver_productos(
         }
     },
 )
-def ver_producto(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db)):
+def ver_producto(
+    id: Annotated[int, Path(gt=0)],
+    db: Session = Depends(get_db),
+    usuario_actual: Annotated[User | None, Depends(get_optional_user)] = None,
+):
     producto_obtenido = db.get(Product, id)
 
     if not producto_obtenido:
         raise HTTPException(status_code=404, detail="Producto no encontrado")
+
+    if usuario_actual is None:
+        return ProductPublicNested.model_validate(producto_obtenido)
 
     return producto_obtenido
 
@@ -70,7 +76,7 @@ def ver_producto(id: Annotated[int, Path(gt=0)], db: Session = Depends(get_db)):
 def agregar_producto(
     producto: ProductCreate,
     db: Session = Depends(get_db),
-    usuario_actual: User = Depends(get_current_owner),
+    usuario_actual: User = Depends(get_current_user),
 ):
     nuevo_producto = Product.model_validate(producto)
 
@@ -144,7 +150,7 @@ def reescribir_producto(
 def borrar_producto(
     id: Annotated[int, Path(gt=0)],
     db: Session = Depends(get_db),
-    usuario_actual: User = Depends(get_current_owner),
+    usuario_actual: User = Depends(get_current_user),
 ):
     producto_obtenido = db.get(Product, id)
 
