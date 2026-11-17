@@ -2,13 +2,14 @@ from fastapi import HTTPException, Path, APIRouter, Depends, status
 from typing import Annotated
 from fastapi_pagination import Page
 from fastapi_pagination.ext.sqlalchemy import paginate
-from ..core.dependencies import get_current_owner, get_optional_user
-from ..core.security import hash_password
+from ..core.dependencies import get_current_owner, get_current_user, get_optional_user
+from ..core.security import hash_password, verify_password
 from ..database import get_db
 from sqlmodel import Session, select
 from ..models import (
     User,
     UserCreate,
+    UserUpdateMe,
     UserPublic,
 )
 
@@ -80,7 +81,7 @@ def agregar_usuario(
     nuevo_usuario = User(
         username=usuario.username,
         hashed_password=hash_password(usuario.password),
-        is_owner=primer_usuario,
+        is_owner=True if primer_usuario else usuario.is_owner,
     )
 
     db.add(nuevo_usuario)
@@ -106,20 +107,83 @@ def agregar_usuario(
     },
 )
 def reescribir_usuario(
-    id: Annotated[int, Path(gt=0)], usuario: UserCreate, db: Session = Depends(get_db)
+    id: Annotated[int, Path(gt=0)],
+    usuario: UserCreate,
+    db: Session = Depends(get_db),
 ):
     usuario_obtenido = db.get(User, id)
 
     if not usuario_obtenido:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
 
+    if usuario_obtenido.is_owner and not usuario.is_owner:
+        propietarios = db.exec(select(User).where(User.is_owner == True)).all()
+
+        if len(propietarios) <= 1:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="No se puede degradar al último propietario",
+            )
+
+    usuario_existente = db.exec(
+        select(User).where(User.username == usuario.username)
+    ).first()
+
+    if usuario_existente and usuario_existente.id != usuario_obtenido.id:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="El nombre de usuario ya está en uso",
+        )
+
     usuario_obtenido.username = usuario.username
     usuario_obtenido.hashed_password = hash_password(usuario.password)
+    usuario_obtenido.is_owner = usuario.is_owner
 
     db.commit()
     db.refresh(usuario_obtenido)
 
     return usuario_obtenido
+
+
+# REESCRIBIR CREDENCIALES PROPIAS
+@users_router.put("/me", tags=["Usuarios"], response_model=UserPublic)
+def modificar_mis_datos(
+    datos: UserUpdateMe,
+    db: Session = Depends(get_db),
+    usuario_actual: User = Depends(get_current_user),
+):
+    if not datos.username and not datos.password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Debe indicar un nuevo nombre de usuario o contraseña",
+        )
+
+    if not verify_password(datos.current_password, usuario_actual.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="La contraseña actual es incorrecta",
+        )
+
+    if datos.username:
+        usuario_existente = db.exec(
+            select(User).where(User.username == datos.username)
+        ).first()
+
+        if usuario_existente and usuario_existente.id != usuario_actual.id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El nombre de usuario ya está en uso",
+            )
+
+        usuario_actual.username = datos.username
+
+    if datos.password:
+        usuario_actual.hashed_password = hash_password(datos.password)
+
+    db.commit()
+    db.refresh(usuario_actual)
+
+    return usuario_actual
 
 
 # BORRAR USER

@@ -20,6 +20,13 @@ class User(UserBase, table=True):
 class UserCreate(SQLModel):
     username: str = Field(min_length=1)
     password: str
+    is_owner: bool = False
+
+
+class UserUpdateMe(SQLModel):
+    current_password: str
+    username: str | None = Field(default=None, min_length=1)
+    password: str | None = None
 
 
 class UserPublic(UserBase):
