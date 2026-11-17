@@ -7,6 +7,7 @@ import jwt
 import os
 
 load_dotenv()
+SECRET_KEY = os.getenv("SECRET_KEY")
 
 
 def hash_password(password: str) -> str:
@@ -85,7 +86,6 @@ class JWTManager:
                 headers={"WWW-Authenticate": "Bearer"},
             )
 
-SECRET_KEY = os.getenv("SECRET_KEY")
 
 if not SECRET_KEY:
     raise RuntimeError("No se encontró la variable SECRET_KEY")
