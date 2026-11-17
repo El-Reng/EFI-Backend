@@ -30,7 +30,6 @@ class Product(ProductBase, table=True):
 
 class ProductCreate(ProductBase):
     category_id: int
-    last_modified_by_user_id: int
 
 
 class ProductPublic(ProductBase):
@@ -39,5 +38,8 @@ class ProductPublic(ProductBase):
 
 class ProductPublicNested(ProductPublic):
     category: CategoryPublic
+
+
+class ProductAdminPublicNested(ProductPublicNested):
     last_modified_by: UserPublic
     last_modified_at: datetime
