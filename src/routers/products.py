@@ -127,6 +127,7 @@ def reescribir_producto(
     producto_obtenido.description = producto.description
     producto_obtenido.price = producto.price
     producto_obtenido.category_id = producto.category_id
+    producto_obtenido.image_url = producto.image_url
     producto_obtenido.last_modified_by_user_id = usuario_actual.id
     producto_obtenido.last_modified_at = datetime.now(timezone.utc)
 
