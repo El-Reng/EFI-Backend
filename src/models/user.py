@@ -1,4 +1,3 @@
-
 from sqlmodel import Field, Relationship, SQLModel
 from typing import TYPE_CHECKING
 
@@ -21,6 +20,12 @@ class UserCreate(SQLModel):
     username: str = Field(min_length=1)
     password: str
     is_owner: bool = False
+
+
+class UserUpdateAdmin(SQLModel):
+    username: str = Field(min_length=1)
+    password: str | None = None
+    is_owner: bool | None = None
 
 
 class UserUpdateMe(SQLModel):
