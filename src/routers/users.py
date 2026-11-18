@@ -9,8 +9,9 @@ from sqlmodel import Session, select
 from ..models import (
     User,
     UserCreate,
-    UserUpdateMe,
     UserPublic,
+    UserUpdateMe,
+    UserUpdateAdmin,
 )
 
 users_router = APIRouter()
@@ -155,22 +156,13 @@ def modificar_mis_datos(
 )
 def reescribir_usuario(
     id: Annotated[int, Path(gt=0)],
-    usuario: UserCreate,
+    usuario: UserUpdateAdmin,
     db: Session = Depends(get_db),
 ):
     usuario_obtenido = db.get(User, id)
 
     if not usuario_obtenido:
         raise HTTPException(status_code=404, detail="Usuario no encontrado")
-
-    if usuario_obtenido.is_owner and not usuario.is_owner:
-        propietarios = db.exec(select(User).where(User.is_owner == True)).all()
-
-        if len(propietarios) <= 1:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="No se puede degradar al último propietario",
-            )
 
     usuario_existente = db.exec(
         select(User).where(User.username == usuario.username)
@@ -182,9 +174,22 @@ def reescribir_usuario(
             detail="El nombre de usuario ya está en uso",
         )
 
+    if usuario.is_owner is not None:
+        if usuario_obtenido.is_owner and not usuario.is_owner:
+            propietarios = db.exec(select(User).where(User.is_owner == True)).all()
+
+            if len(propietarios) <= 1:
+                raise HTTPException(
+                    status_code=status.HTTP_409_CONFLICT,
+                    detail="No se puede degradar al último propietario",
+                )
+
+        usuario_obtenido.is_owner = usuario.is_owner
+
     usuario_obtenido.username = usuario.username
-    usuario_obtenido.hashed_password = hash_password(usuario.password)
-    usuario_obtenido.is_owner = usuario.is_owner
+
+    if usuario.password:
+        usuario_obtenido.hashed_password = hash_password(usuario.password)
 
     db.commit()
     db.refresh(usuario_obtenido)
