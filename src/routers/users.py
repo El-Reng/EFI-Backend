@@ -16,6 +16,12 @@ from ..models import (
 users_router = APIRouter()
 
 
+# MI USER
+@users_router.get("/me", tags=["Usuarios"], response_model=UserPublic)
+def ver_mis_datos(usuario_actual: User = Depends(get_current_user)):
+    return usuario_actual
+
+
 # USERS
 @users_router.get(
     "/",
@@ -91,6 +97,47 @@ def agregar_usuario(
     return nuevo_usuario
 
 
+# REESCRIBIR MI USER
+@users_router.put("/me", tags=["Usuarios"], response_model=UserPublic)
+def modificar_mis_datos(
+    datos: UserUpdateMe,
+    db: Session = Depends(get_db),
+    usuario_actual: User = Depends(get_current_user),
+):
+    if not datos.username and not datos.password:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Debe indicar un nuevo nombre de usuario o contraseña",
+        )
+
+    if not verify_password(datos.current_password, usuario_actual.hashed_password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="La contraseña actual es incorrecta",
+        )
+
+    if datos.username:
+        usuario_existente = db.exec(
+            select(User).where(User.username == datos.username)
+        ).first()
+
+        if usuario_existente and usuario_existente.id != usuario_actual.id:
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="El nombre de usuario ya está en uso",
+            )
+
+        usuario_actual.username = datos.username
+
+    if datos.password:
+        usuario_actual.hashed_password = hash_password(datos.password)
+
+    db.commit()
+    db.refresh(usuario_actual)
+
+    return usuario_actual
+
+
 # REESCRIBIR USER
 @users_router.put(
     "/{id}",
@@ -143,47 +190,6 @@ def reescribir_usuario(
     db.refresh(usuario_obtenido)
 
     return usuario_obtenido
-
-
-# REESCRIBIR CREDENCIALES PROPIAS
-@users_router.put("/me", tags=["Usuarios"], response_model=UserPublic)
-def modificar_mis_datos(
-    datos: UserUpdateMe,
-    db: Session = Depends(get_db),
-    usuario_actual: User = Depends(get_current_user),
-):
-    if not datos.username and not datos.password:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="Debe indicar un nuevo nombre de usuario o contraseña",
-        )
-
-    if not verify_password(datos.current_password, usuario_actual.hashed_password):
-        raise HTTPException(
-            status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="La contraseña actual es incorrecta",
-        )
-
-    if datos.username:
-        usuario_existente = db.exec(
-            select(User).where(User.username == datos.username)
-        ).first()
-
-        if usuario_existente and usuario_existente.id != usuario_actual.id:
-            raise HTTPException(
-                status_code=status.HTTP_409_CONFLICT,
-                detail="El nombre de usuario ya está en uso",
-            )
-
-        usuario_actual.username = datos.username
-
-    if datos.password:
-        usuario_actual.hashed_password = hash_password(datos.password)
-
-    db.commit()
-    db.refresh(usuario_actual)
-
-    return usuario_actual
 
 
 # BORRAR USER
